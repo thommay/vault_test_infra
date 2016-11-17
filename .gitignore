@@ -1,0 +1,4 @@
+terraform.*
+cookbooks
+.terraform
+.chef
