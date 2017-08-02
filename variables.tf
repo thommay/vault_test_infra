@@ -38,7 +38,7 @@ variable "private_ssh_key_path" {
 
 variable "chef-server-version" {
   description = "Chef server version"
-  default = "12.9.1"
+  default     = "12.9.1"
 }
 
 variable "chef-server-user" {
