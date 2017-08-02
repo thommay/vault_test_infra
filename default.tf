@@ -30,18 +30,6 @@ resource "aws_subnet" "primary" {
   }
 }
 
-/* resource "aws_subnet" "secondary" { */
-/*   vpc_id                  = "${aws_vpc.chef_vault_testing.id}" */
-/*   cidr_block              = "${var.secondary_cidr}" */
-/*   availability_zone       = "${data.aws_availability_zones.available.names[1]}" */
-/*   map_public_ip_on_launch = true */
-/*   depends_on              = ["aws_internet_gateway.default"] */
-
-/*   tags { */
-/*     Name = "Public Subnet" */
-/*   } */
-/* } */
-
 resource "aws_route_table" "public" {
   vpc_id = "${aws_vpc.chef_vault_testing.id}"
 
@@ -55,11 +43,6 @@ resource "aws_route_table_association" "primary" {
   subnet_id      = "${aws_subnet.primary.id}"
   route_table_id = "${aws_route_table.public.id}"
 }
-
-/* resource "aws_route_table_association" "secondary" { */
-/*   subnet_id      = "${aws_subnet.secondary.id}" */
-/*   route_table_id = "${aws_route_table.public.id}" */
-/* } */
 
 resource "aws_security_group" "access" {
   name        = "access"
@@ -112,7 +95,7 @@ resource "aws_security_group" "access" {
 }
 
 module "tf_chef_server" {
-  source = "../tf_chef_server"
+  source = "github.com/thommay/tf_chef_server"
   region = "${var.aws_region}"
 
   subnet_id = "${aws_subnet.primary.id}"
@@ -124,7 +107,6 @@ module "tf_chef_server" {
   ami                        = "${var.ami}"
   ssh_user                   = "ubuntu"
   chef_server_version        = "${var.chef-server-version}"
-  chef_server_addons         = ""
   chef_server_user           = "${var.chef-server-user}"
   chef_server_user_full_name = "${var.chef-server-user-full-name}"
   chef_server_user_email     = "${var.chef-server-user-email}"
@@ -133,7 +115,7 @@ module "tf_chef_server" {
   chef_server_org_full_name  = "${var.chef-server-org-full-name}"
 }
 
-resource "template_file" "knife_rb" {
+data "template_file" "knife_rb" {
   template = "${file("${path.module}/templates/knife_rb.tpl")}"
 
   vars {
@@ -142,20 +124,18 @@ resource "template_file" "knife_rb" {
     chef-server-fqdn         = "${module.tf_chef_server.public_ip}"
     chef-server-organization = "${var.chef-server-org-name}"
   }
-
-  # Make .chef/knife.rb file
-  provisioner "local-exec" {
-    command = "mkdir -p .chef && echo '${template_file.knife_rb.rendered}' > .chef/knife.rb"
-  }
-
-  # Download chef validation pem
-  provisioner "local-exec" {
-    command = "scp -oStrictHostKeyChecking=no -i ${var.private_ssh_key_path} ubuntu@${module.tf_chef_server.public_ip}:${var.chef-server-user}.pem .chef"
-  }
 }
 
-resource "null_resource" "fetch_chef_server_cert" {
-  depends_on = ["template_file.knife_rb"]
+resource "null_resource" "build_knife_config" {
+  # Make .chef/knife.rb file
+  provisioner "local-exec" {
+    command = "mkdir -p .chef && echo '${data.template_file.knife_rb.rendered}' > .chef/knife.rb"
+  }
+
+  # Download chef user pem
+  provisioner "local-exec" {
+    command = "scp -oStrictHostKeyChecking=no -i ${var.private_ssh_key_path} ubuntu@${module.tf_chef_server.public_ip}:${var.chef-server-user}.pem .chef/admin.pem"
+  }
 
   # Fetch Chef Server Certificate
   provisioner "local-exec" {
@@ -165,6 +145,7 @@ resource "null_resource" "fetch_chef_server_cert" {
 }
 
 resource "aws_instance" "client" {
+  depends_on             = ["null_resource.build_knife_config"]
   ami                    = "${lookup(var.ami, var.aws_region)}"
   instance_type          = "t2.small"
   count                  = "${var.node-count}"

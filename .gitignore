@@ -1,4 +1,7 @@
 terraform.*
 cookbooks
 .terraform
+.terraform.tfstate.lock.info
 .chef
+
+terraform.tfvars

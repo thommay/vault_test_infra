@@ -22,7 +22,7 @@ variable "ami" {
   description = "Base AMI for all nodes"
 
   default = {
-    us-west-2 = "ami-746aba14"
+    us-west-2 = "ami-6e1a0117"
   }
 }
 
@@ -38,31 +38,37 @@ variable "private_ssh_key_path" {
 
 variable "chef-server-version" {
   description = "Chef server version"
-  default     = "12.9.1"
+  default     = "12.15.8"
 }
 
 variable "chef-server-user" {
   description = "Chef server user"
+  default = "vault"
 }
 
 variable "chef-server-user-full-name" {
   description = "Chef server user name"
+  default = "Vault User"
 }
 
 variable "chef-server-user-email" {
   description = "Chef server user email"
+  default = "vault@vault.local"
 }
 
 variable "chef-server-user-password" {
   description = "Chef server user password"
+  default = "vaultvault"
 }
 
 variable "chef-server-org-name" {
   description = "Chef server org name"
+  default = "vault"
 }
 
 variable "chef-server-org-full-name" {
   description = "Chef server org full name"
+  default = "vault"
 }
 
 variable "node-count" {
